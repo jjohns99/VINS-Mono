@@ -15,9 +15,11 @@ find_package(catkin REQUIRED COMPONENTS
     cv_bridge
     )
 
-find_package(OpenCV REQUIRED)
+find_package(OpenCV 3.2.0 REQUIRED)
 
-# message(WARNING "OpenCV_VERSION: ${OpenCV_VERSION}")
+message(WARNING "OpenCV_VERSION: ${OpenCV_VERSION}")
+
+#This package will need to be reconfigured if you want to use  OpenCV4
 
 find_package(Ceres REQUIRED)
 
@@ -51,6 +53,4 @@ add_executable(vins_estimator
     )
 
 
-target_link_libraries(vins_estimator ${catkin_LIBRARIES} ${OpenCV_LIBS} ${CERES_LIBRARIES}) 
-
-
+target_link_libraries(vins_estimator ${catkin_LIBRARIES} ${OpenCV_LIBS} ${CERES_LIBRARIES})
