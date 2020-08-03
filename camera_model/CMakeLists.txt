@@ -13,7 +13,7 @@ find_package(catkin REQUIRED COMPONENTS
 find_package(Boost REQUIRED COMPONENTS filesystem program_options system)
 include_directories(${Boost_INCLUDE_DIRS})
 
-find_package(OpenCV 3.2.0 REQUIRED)
+find_package(OpenCV 4.4.0 REQUIRED)
 
 # set(EIGEN_INCLUDE_DIR "/usr/local/include/eigen3")
 find_package(Ceres REQUIRED)
@@ -35,9 +35,9 @@ include_directories("include")
 
 
 add_executable(Calibration
-    src/intrinsic_calib.cc
     src/chessboard/Chessboard.cc
     src/calib/CameraCalibration.cc
+    src/intrinsic_calib.cc
     src/camera_models/Camera.cc
     src/camera_models/CameraFactory.cc
     src/camera_models/CostFunctionFactory.cc
@@ -50,7 +50,6 @@ add_executable(Calibration
     src/gpl/EigenQuaternionParameterization.cc)
 
 add_library(camera_model
-    src/chessboard/Chessboard.cc
     src/calib/CameraCalibration.cc
     src/camera_models/Camera.cc
     src/camera_models/CameraFactory.cc
