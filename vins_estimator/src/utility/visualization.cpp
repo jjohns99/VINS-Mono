@@ -4,7 +4,7 @@ using namespace ros;
 using namespace Eigen;
 ros::Publisher pub_odometry, pub_latest_odometry;
 ros::Publisher pub_path, pub_relo_path;
-ros::Publisher pub_point_cloud, pub_margin_cloud;
+ros::Publisher pub_point_cloud_c, pub_point_cloud_w, pub_margin_cloud;
 ros::Publisher pub_key_poses;
 ros::Publisher pub_relo_relative_pose;
 ros::Publisher pub_camera_pose;
@@ -20,13 +20,17 @@ CameraPoseVisualization keyframebasevisual(0.0, 0.0, 1.0, 1.0);
 static double sum_of_path = 0;
 static Vector3d last_path(0.0, 0.0, 0.0);
 
+//number of frames a feature must be tracked for before publishing
+static int frames_for_pub = 5;
+
 void registerPub(ros::NodeHandle &n)
 {
     pub_latest_odometry = n.advertise<nav_msgs::Odometry>("imu_propagate", 1000);
     pub_path = n.advertise<nav_msgs::Path>("path", 1000);
     pub_relo_path = n.advertise<nav_msgs::Path>("relocalization_path", 1000);
     pub_odometry = n.advertise<nav_msgs::Odometry>("odometry", 1000);
-    pub_point_cloud = n.advertise<sensor_msgs::PointCloud>("point_cloud", 1000);
+    pub_point_cloud_w = n.advertise<sensor_msgs::PointCloud>("point_cloud_w", 1000);
+    pub_point_cloud_c = n.advertise<sensor_msgs::PointCloud>("point_cloud_c", 1000);
     pub_margin_cloud = n.advertise<sensor_msgs::PointCloud>("history_cloud", 1000);
     pub_key_poses = n.advertise<visualization_msgs::Marker>("key_poses", 1000);
     pub_camera_pose = n.advertise<nav_msgs::Odometry>("camera_pose", 1000);
@@ -239,8 +243,9 @@ void pubCameraPose(const Estimator &estimator, const std_msgs::Header &header)
 
 void pubPointCloud(const Estimator &estimator, const std_msgs::Header &header)
 {
-    sensor_msgs::PointCloud point_cloud, loop_point_cloud;
-    point_cloud.header = header;
+    sensor_msgs::PointCloud point_cloud_w, point_cloud_c, loop_point_cloud;
+    point_cloud_w.header = header;
+    point_cloud_c.header = header;
     loop_point_cloud.header = header;
 
 
@@ -248,7 +253,7 @@ void pubPointCloud(const Estimator &estimator, const std_msgs::Header &header)
     {
         int used_num;
         used_num = it_per_id.feature_per_frame.size();
-        if (!(used_num >= 2 && it_per_id.start_frame < WINDOW_SIZE - 2))
+        if (!(used_num >= frames_for_pub && it_per_id.start_frame < WINDOW_SIZE - 2))
             continue;
         if (it_per_id.start_frame > WINDOW_SIZE * 3.0 / 4.0 || it_per_id.solve_flag != 1)
             continue;
@@ -256,13 +261,20 @@ void pubPointCloud(const Estimator &estimator, const std_msgs::Header &header)
         Vector3d pts_i = it_per_id.feature_per_frame[0].point * it_per_id.estimated_depth;
         Vector3d w_pts_i = estimator.Rs[imu_i] * (estimator.ric[0] * pts_i + estimator.tic[0]) + estimator.Ps[imu_i];
 
-        geometry_msgs::Point32 p;
-        p.x = w_pts_i(0);
-        p.y = w_pts_i(1);
-        p.z = w_pts_i(2);
-        point_cloud.points.push_back(p);
+        geometry_msgs::Point32 p_w;
+        p_w.x = w_pts_i(0);
+        p_w.y = w_pts_i(1);
+        p_w.z = w_pts_i(2);
+        point_cloud_w.points.push_back(p_w);
+
+        geometry_msgs::Point32 p_c;
+        p_c.x = pts_i(0);
+        p_c.y = pts_i(1);
+        p_c.z = pts_i(2);
+        point_cloud_c.points.push_back(p_c);
     }
-    pub_point_cloud.publish(point_cloud);
+    pub_point_cloud_w.publish(point_cloud_w);
+    pub_point_cloud_c.publish(point_cloud_c);
 
 
     // pub margined potin
@@ -270,7 +282,7 @@ void pubPointCloud(const Estimator &estimator, const std_msgs::Header &header)
     margin_cloud.header = header;
 
     for (auto &it_per_id : estimator.f_manager.feature)
-    { 
+    {
         int used_num;
         used_num = it_per_id.feature_per_frame.size();
         if (!(used_num >= 2 && it_per_id.start_frame < WINDOW_SIZE - 2))
@@ -278,7 +290,7 @@ void pubPointCloud(const Estimator &estimator, const std_msgs::Header &header)
         //if (it_per_id->start_frame > WINDOW_SIZE * 3.0 / 4.0 || it_per_id->solve_flag != 1)
         //        continue;
 
-        if (it_per_id.start_frame == 0 && it_per_id.feature_per_frame.size() <= 2 
+        if (it_per_id.start_frame == 0 && it_per_id.feature_per_frame.size() <= 2
             && it_per_id.solve_flag == 1 )
         {
             int imu_i = it_per_id.start_frame;
